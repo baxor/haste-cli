@@ -1,0 +1,7 @@
+#!/bin/bash
+
+FILE=$(mktemp)
+
+script $FILE
+
+cat $FILE|strip_cc | haste -r "$1"
