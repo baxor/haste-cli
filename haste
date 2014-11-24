@@ -1,0 +1,73 @@
+#!/usr/bin/python
+
+# @title Hastebin Python CLI Client
+# ------------------------------------------------------------------------------------------
+# @author Adam Backer (Forked from: Myles McNamara [http://github.com/tripflex])
+# @date 11/17/2014
+# @version 1.0
+# @source http://github.com/baxor
+# ------------------------------------------------------------------------------------------
+# @copyright Copyright (C) 2012 Adam Backer
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# ------------------------------------------------------------------------------------------
+
+import urllib2
+import sys, os, pwd, socket
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option('-f', '--file', action='store', type='string', dest='content_file', help='Filename to post')
+parser.add_option('-r', '--hipchat-room', action='store', type='string', dest='room', help='Hipchat Room to post to')
+(options, args) = parser.parse_args()
+URL = "http://hastebin.com"
+user = pwd.getpwuid( os.getuid() )[ 0 ]
+host = socket.gethostname()
+room = options.room
+content_file = options.content_file
+hipchat_auth_token = 'HIPCHAT_AUTH_TOKEN'
+
+if sys.stdin.isatty():
+  if options.content_file:
+    filecontents = open(content_file, 'r')
+    try:
+        data = "".join(filecontents.readlines()).strip()
+    finally:
+        filecontents.close()
+
+  else:
+    print "Must use -f or pass to stdin"
+    sys.exit(1)
+else:
+    if options.content_file:
+      print "ERROR: -f and stdin both set, using stdin.."
+      data = "".join(sys.stdin.readlines()).strip()
+    else:
+      data = "".join(sys.stdin.readlines()).strip()
+      pass
+
+req = urllib2.Request(URL + "/documents", data)
+response = urllib2.urlopen(req)
+responsedata = response.read()
+responseeval = eval(responsedata)
+haste_url = "%s/%s\n" % (URL, responseeval['key'])
+sys.stdout.write(haste_url)
+output = haste_url
+
+if options.room:
+  try:
+    output = "%s@%s just pasted: <a href='%s'>%s</a>" % (user, host, haste_url, haste_url)
+    os.system('/usr/bin/hipchat_post -r "%s" -m "%s" -n Hastebin -c yellow -a %s' % (room, output, hipchat_auth_token))
+    sys.exit(0)
+  except Exception as e:
+    print "Posting to hipchat failed!"
+    print e.message, e.args
+
